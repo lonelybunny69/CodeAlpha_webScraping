@@ -5,12 +5,10 @@ import time
 
 # ============================================================
 # Web Scraping - Books to Scrape (books.toscrape.com)
-# Mengambil data buku dari semua halaman (±50 halaman / 1000 buku)
 # ============================================================
 
 BASE_URL = "http://books.toscrape.com/"
 
-# Kamus untuk mengkonversi rating dari kata ke angka
 RATING_MAP = {
     "One": 1,
     "Two": 2,
@@ -35,7 +33,7 @@ def scrape_halaman(url):
     """
     try:
         response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()  # Akan raise error jika status bukan 2xx
+        response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"  [WARN] Gagal mengakses {url}: {e}")
         return []
@@ -45,17 +43,13 @@ def scrape_halaman(url):
 
     data = []
     for buku in buku_list:
-        # Judul buku
         judul = buku.h3.a['title']
 
-        # Harga — hapus simbol mata uang dan konversi ke float
         harga_raw = buku.find('p', class_='price_color').text
         harga = float(harga_raw.replace('Â£', '').replace('£', '').strip())
 
-        # Status stok
         stok = buku.find('p', class_='instock availability').text.strip()
 
-        # Rating bintang (konversi ke angka)
         rating_class = buku.find('p', class_='star-rating')['class'][1]
         rating = RATING_MAP.get(rating_class, 0)
 
@@ -80,11 +74,9 @@ def get_next_page_url(soup, current_url):
 
     next_href = next_btn.a['href']
 
-    # Jika href mengandung 'catalogue/', gunakan BASE_URL sebagai akar
     if next_href.startswith('catalogue/'):
         return BASE_URL + next_href
     else:
-        # Sudah berada di dalam /catalogue/, ambil direktori induk
         base = current_url.rsplit('/', 1)[0] + '/'
         return base + next_href
 
@@ -111,7 +103,6 @@ while current_url:
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Ambil data buku di halaman ini
     data_halaman = scrape_halaman(current_url)
     semua_data.extend(data_halaman)
 
@@ -119,7 +110,6 @@ while current_url:
     current_url = get_next_page_url(soup, current_url)
     halaman += 1
 
-    # Jeda kecil agar tidak membebani server
     time.sleep(0.5)
 
 # ============================================================
@@ -127,10 +117,8 @@ while current_url:
 # ============================================================
 df = pd.DataFrame(semua_data)
 
-# Urutkan berdasarkan rating tertinggi
 df = df.sort_values(by='Rating (1-5)', ascending=False).reset_index(drop=True)
 
-# Simpan — gunakan 'utf-8-sig' agar simbol terbaca benar di Excel
 output_file = 'scraping_book.csv'
 df.to_csv(output_file, index=False, encoding='utf-8-sig')
 
